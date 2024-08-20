@@ -1,0 +1,33 @@
+name: Zip and Merge with Master
+
+on:
+  push:
+    branches:
+      - feature-branch # Replace with the branch you want to monitor
+
+jobs:
+  zip-and-merge:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'  # Specify the Node.js version
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Zip directory contents
+      run: node zipDirectory.js
+
+    - name: Commit and push zip file
+      run: |
+        git config --local user.email "mayankgoyal020997@gmail.com"
+        git config --local user.name "Mayank Goyal"
+        git add output.zip
+        git commit -m "Add zipped directory"
+        git push origin HEAD:master  # Push to master branch
