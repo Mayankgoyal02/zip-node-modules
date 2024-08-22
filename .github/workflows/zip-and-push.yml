@@ -26,8 +26,8 @@ jobs:
 
     - name: Commit and push zip file
       run: |
-        git config --global user.email "you@example.com"
-        git config --global user.name "Your Name"
+        git config --global user.email "mayankgoyal@gmail.com"
+        git config --global user.name "Mayank Goyal"
         git add project.zip
         git commit -m "Add zip file"
         git push origin ${{ github.ref }}
