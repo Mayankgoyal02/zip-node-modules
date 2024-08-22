@@ -11,18 +11,18 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16'  # Specify Node.js version
+        node-version: '20'  # Specify Node.js version
 
     - name: Install project dependencies
-      run: npm ci  # Uses package-lock.json to install exact dependencies
+      run: npm install  # Install dependencies
 
     - name: Create zip file
-      run: node zipProject.js
+      run: node zipProjectjszip.js
 
     - name: Commit and push zip file
       run: |
@@ -31,3 +31,8 @@ jobs:
         git add project.zip
         git commit -m "Add zip file"
         git push origin ${{ github.ref }}
+      env:
+        GIT_AUTHOR_NAME: "Mayank Goyal"
+        GIT_AUTHOR_EMAIL: "mayankgoyal@gmail.com"
+        GIT_COMMITTER_NAME: "Mayank Goyal"
+        GIT_COMMITTER_EMAIL: "mayankgoyal@gmail.com"
