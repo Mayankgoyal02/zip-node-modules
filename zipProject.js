@@ -4,7 +4,7 @@ const path = require('path');
 
 const output = fs.createWriteStream(path.join(__dirname, 'project.zip'));
 const archive = archiver('zip', {
-    zlib: { level: 9 } // Sets the compression level.
+    zlib: { level: 1 } // Sets the compression level.
 });
 
 output.on('close', function() {
