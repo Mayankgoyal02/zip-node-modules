@@ -22,7 +22,7 @@ jobs:
       run: npm install  # Install dependencies
 
     - name: Create zip file
-      run: node zipProject.js
+      run: node zipProjectjszip.js
 
     - name: Commit and push zip file
       env:
