@@ -1,0 +1,33 @@
+name: Zip and Push
+
+on:
+  push:
+    branches:
+      - '**'  # Trigger on any branch push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'  # Specify Node.js version
+
+    - name: Install project dependencies
+      run: npm ci  # Uses package-lock.json to install exact dependencies
+
+    - name: Create zip file
+      run: node zipProject.js
+
+    - name: Commit and push zip file
+      run: |
+        git config --global user.email "you@example.com"
+        git config --global user.name "Your Name"
+        git add project.zip
+        git commit -m "Add zip file"
+        git push origin ${{ github.ref }}
