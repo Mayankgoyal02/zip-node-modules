@@ -1,0 +1,64 @@
+{
+  "additional_details": {
+    "requestedFor": "Simran Jhangyani",
+    "requestedForRef": "46baaf7247aaf110847b0f68436d4343",
+    "businessUnit": "AMIS",
+    "lineManager": "Baljit Singh",
+    "entity": "amis",
+    "entityTag":"AMIS",
+    "environment": "Sandbox",
+    "applicationDomian": "Corp Systems",
+    "DomainOwner": "Joe Williams",
+    "product": "DEC",
+    "modifiedProductName": "DEC"
+  },
+  "snowEnvironment": "development",
+  "cloudPlatform": "aws",
+  "region": "us-east-1",
+  "accountId": "796395084528",
+  "resources": [
+    {
+      "resource_type": "lambda",
+      "id": "1",
+      "details": {
+        "id": "1",
+        "function_name": "LambdaTesting",
+        "cost": "AWS Lambda Duration = $0.0000106667 per GB-Seconds\nAWS Lambda - Ephemeral Storage = $0.0000000309 per GB-Seconds\nLambda Request =$0.0000002000 per request\n",
+        "runtime": "python3.12",
+        "repository_name": "Arch_IaC_MVP",
+        "repository_owner": "Arch-ManagedInfrastructureServices",
+        "repository_branch": "AUT-2105-Phase2-AWS-Lambda-SourceCode",
+        "directoryName": "Python",
+        "source_file": "../../../../../../../Terraform-Modules/aws/LAMBDA/Python_RITMLAZIP007",
+        "output_path": "../../../../../../../Terraform-Modules/aws/LAMBDA/Python_RITMLAZIP007.zip",
+        "filename": "../../../../../../../Terraform-Modules/aws/LAMBDA/Python_RITMLAZIP007.zip",
+        "handler": "HelloWorld.handler",
+        "create_role": "true",
+        "provisioned_concurrent_executions": "1",
+        "create_alias": "true",
+        "create_layer": "true",
+        "create_event_source": "true",
+        "create_sqs": "true",
+        "enable_vpc": "true",
+        "vpc_subnet_ids": [
+          "subnet-0c4b41ea0b9308de0",
+          "subnet-0856b234b0103bf7d"
+        ],
+        "vpc_security_group_ids": [
+          "sg-07fd1161f4d21cea5",
+          "sg-0d142717d3b02dc3a"
+        ],
+        "comment": "e2e lambda testing",
+        "location": "us-east-1"
+      }
+    }
+  ],
+  "task_details": {
+    "number": "SCTASK0204848",
+    "sysid": "30f4542ec317025037d46b15990131f4"
+  },
+  "ritm_details": {
+    "number": "RITMLAZIP007",
+    "sysid": "73c41ceac317025037d46b159901314e"
+  }
+}
