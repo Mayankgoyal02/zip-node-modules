@@ -1,0 +1,108 @@
+name: Terraform Test
+on:
+  push:
+    branches:
+       - "AUT-2324-*"     
+       
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+ 
+jobs:
+  test:
+    runs-on: [self-hosted, linux, azure-ephemeral, "${{ github.run_id }}"]
+    # runs-on: [github-runner-sandbox-infosys-iac-mvp]
+    env:
+      SNOW_USER: ${{ secrets.SERVICENOW_USERNAME }}
+      SNOW_PASSWORD: ${{ secrets.SERVICENOW_PASSWORD }}
+      MSSQL_USER_NAME: ${{ secrets.MSSQL_USER_NAME }}
+      MSSQL_PASSWORD: ${{ secrets.MSSQL_PASSWORD }}
+      ARM_USE_MSI: true
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+  
+      - name: Generate App Token
+        id: generate_token_emu
+        uses: ./.github/actions/access-token
+        with:
+          app_id: ${{ secrets.AMIS_AUTOMATION_EMU_APP_ID }}
+          private_key: ${{ secrets.AMIS_AUTOMATION_EMU_APP_KEY }}
+
+      - name: Set token in output
+        id: arch-emu-token
+        run: |
+          echo "arch_emu_token=${{ env.access_token }}" >> $GITHUB_ENV
+
+      - name: Setup Git Configuration
+        id: setupgit
+        run: |
+          git config --global url."https://x-access-token:${{ env.arch_emu_token }}@github.com/Arch-ManagedInfrastructureServices".insteadOf "https://github.com/Arch-ManagedInfrastructureServices"
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
+
+      # Running Nodejs to generate terraform files for azure resources
+      - name: Run Nodejs Script
+        env:
+          GITHUB_ACCESS_TOKEN: ${{ env.arch_emu_token }}
+        run: |
+          cd ./Code-Generation
+          npm install
+          node test.js
+
+      - name: Install Package for Lambda
+        run: |
+          
+
+      # - name: Configure Aws Credentials
+      #   uses: aws-actions/configure-aws-credentials@v2
+      #   with:
+      #     role-to-assume: arn:aws:iam::796395084528:role/AMIS-Automation-Servicenow-E2E 
+      #     aws-region: us-east-1 
+     
+      # - name: Get token for OIDC
+      #   uses: actions/github-script@v7
+      #   if: always()
+      #   id: get-token
+      #   with:
+      #     result-encoding: string
+      #     script: |
+      #       const token = await core.getIDToken()
+      #       return token
+     
+      # # Initializing created terraform working directory
+      # - name: Terraform Init
+      #   run: |
+      #     cd ./Entity/AMIS/product/DEC/aws/Sandbox/RITMLAZIP007
+      #     terraform init -no-color
+     
+      # - name: Terraform Validate
+      #   run: |
+      #     cd ./Entity/AMIS/product/DEC/aws/Sandbox/RITMLAZIP007
+      #     terraform validate
+ 
+      #   # Generates an execution plan for Terraform
+      # - name: Run Terraform Plan
+      #   id: terraform-json
+      #   run: |
+      #       cd ./Entity/AMIS/product/DEC/aws/Sandbox/RITMLAZIP007
+      #       terraform plan --out tfplan.binary -no-color && terraform show -json tfplan.binary 
+            
+      # - name: Save Output to JSON File
+      #   run: |
+      #     echo '${{ steps.terraform-json.outputs.stdout }}' > output.json
+          
+      # - name: Run Terraform Apply
+      #   id: terraform-apply
+      #   run: |
+      #       cd ./Entity/AMIS/product/DEC/aws/Sandbox/RITMLAZIP007
+      #       terraform apply -auto-approve
+      #       terraform output -json > tfapply.json
+
+      # - name: Run Terraform Destroy
+      #   id: terraform-destroy
+      #   run: |
+      #       cd ./Entity/AMIS/product/DEC/aws/Sandbox/RITMLAZIP007
+      #       terraform destroy -auto-approve
+      #       # terraform output -json > tfapply.json
