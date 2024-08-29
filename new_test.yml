@@ -1,0 +1,96 @@
+name: Terraform Test
+
+on:
+  push:
+    branches:
+      - "AUT-2324-*"
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: [self-hosted, linux, azure-ephemeral, "${{ github.run_id }}"]
+    env:
+      SNOW_USER: ${{ secrets.SERVICENOW_USERNAME }}
+      SNOW_PASSWORD: ${{ secrets.SERVICENOW_PASSWORD }}
+      MSSQL_USER_NAME: ${{ secrets.MSSQL_USER_NAME }}
+      MSSQL_PASSWORD: ${{ secrets.MSSQL_PASSWORD }}
+      ARM_USE_MSI: true
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Generate App Token
+        id: generate_token_emu
+        uses: ./.github/actions/access-token
+        with:
+          app_id: ${{ secrets.AMIS_AUTOMATION_EMU_APP_ID }}
+          private_key: ${{ secrets.AMIS_AUTOMATION_EMU_APP_KEY }}
+
+      - name: Set token in output
+        id: arch-emu-token
+        run: |
+          echo "arch_emu_token=${{ env.access_token }}" >> $GITHUB_ENV
+
+      - name: Setup Git Configuration
+        id: setupgit
+        run: |
+          git config --global url."https://x-access-token:${{ env.arch_emu_token }}@github.com/Arch-ManagedInfrastructureServices".insteadOf "https://github.com/Arch-ManagedInfrastructureServices"
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
+
+      - name: Validate snow_payload.json
+        id: validate_payload
+        run: |
+          # Extract the runtime and resource_type from the payload
+          RUNTIME=$(jq -r '.resources[].details.runtime' snow_payload.json)
+          RESOURCE_TYPE=$(jq -r '.resources[].resource_type' snow_payload.json)
+
+          # Validate resource_type is "lambda"
+          if [[ "$RESOURCE_TYPE" != "lambda" ]]; then
+            echo "Invalid resource_type: $RESOURCE_TYPE. Expected 'lambda'."
+            exit 1
+          fi
+
+          # Validate runtime is "python" or "nodejs"
+          if [[ "$RUNTIME" != "python" && "$RUNTIME" != "nodejs" ]]; then
+            echo "Invalid runtime: $RUNTIME. Expected 'python' or 'nodejs'."
+            exit 1
+          fi
+
+      - name: Install Node.js dependencies if package.json is present
+        run: |
+          DIRECTORY_NAME=$(jq -r '.resources[].details.name' snow_payload.json)
+          RITM_NUMBER=$(jq -r '.resources[].details.ritm_number' snow_payload.json)
+          PACKAGE_JSON_PATH="../Terraform-Modules/aws/LAMBDA/${DIRECTORY_NAME}_${RITM_NUMBER}/package.json"
+
+          if [ -f "$PACKAGE_JSON_PATH" ]; then
+            echo "Found package.json at $PACKAGE_JSON_PATH"
+            npm install --prefix "../Terraform-Modules/aws/LAMBDA/${DIRECTORY_NAME}_${RITM_NUMBER}/"
+          else
+            echo "No package.json found at $PACKAGE_JSON_PATH"
+          fi
+
+      - name: Install Python dependencies if requirements.txt is present
+        run: |
+          DIRECTORY_NAME=$(jq -r '.resources[].details.name' snow_payload.json)
+          RITM_NUMBER=$(jq -r '.resources[].details.ritm_number' snow_payload.json)
+          REQUIREMENTS_PATH="../Terraform-Modules/aws/LAMBDA/${DIRECTORY_NAME}_${RITM_NUMBER}/requirements.txt"
+
+          if [ -f "$REQUIREMENTS_PATH" ]; then
+            echo "Found requirements.txt at $REQUIREMENTS_PATH"
+            pip install -r "$REQUIREMENTS_PATH"
+          else
+            echo "No requirements.txt found at $REQUIREMENTS_PATH"
+          fi
+
+      - name: Run Nodejs Script
+        env:
+          GITHUB_ACCESS_TOKEN: ${{ env.arch_emu_token }}
+        run: |
+          cd ./Code-Generation
+          npm install
+          node test.js
