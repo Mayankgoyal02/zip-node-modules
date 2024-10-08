@@ -1,0 +1,143 @@
+# Create Primary SQL managed instance  
+
+# sqlmanagedinstance_$loopvar start
+data "azurerm_subscription" "current$loopvar" {}
+
+module "sqlmanagedinstance_$loopvar" {
+  source                       = "github.com/ARCH-AMIS/tf_mod_az_sql_managed_instance//mssql_managed_instance?ref=tag"
+  administrator_login          = "sqlmiadmin"
+  location                     = var.location$loopvar
+  name                         = var.name$loopvar
+  resource_group_name          = var.resource_group_name$loopvar
+  sku_name                     = var.sku_name$loopvar
+  storage_size_in_gb           = var.storage_size_in_gb$loopvar
+  vcores                       = var.vcores$loopvar
+  subnet_id                    = data.azurerm_subnet.primary_subnet$loopvar.id
+  key_vault_id                 = data.azurerm_key_vault.key_vault$loopvar.id
+  license_type                 = "LicenseIncluded"
+  minimum_tls_version          = "1.2"
+  proxy_override               = "Default"
+  public_data_endpoint_enabled = "false"
+  zone_redundant_enabled       = var.zone_redundant_enabled$loopvar
+  storage_account_type         = var.storage_account_type$loopvar
+  timezone_id                  = var.timezone_id$loopvar
+  collation                    = var.collation$loopvar
+
+  identity = {
+    type = "SystemAssigned"
+  }
+
+  tags = merge(var.tags$loopvar, {
+    Application = "Azure SQL Mananged Instance"
+  })
+
+  depends_on = [
+    $rgDependency
+  ]
+}
+
+module "private_endpoint_$loopvar" {
+  source              = "github.com/ARCH-AMIS/tf_mod_az_networking//private_endpoint?ref=tag"
+  name                = "${module.sqlmanagedinstance_$loopvar.mssql_managed_instance.name}-pep"
+  resource_group_name = var.resource_group_name$loopvar
+  location            = var.location$loopvar
+  subnet_id           = data.azurerm_subnet.privateendpoint_subnet$loopvar.id
+
+  tags = merge(var.tags$loopvar, {
+    Application = "Azure Private Endpoint"
+  })
+
+  private_dns_zone_group = {
+    name                 = "privatednszonegroup-sqlmi"
+    private_dns_zone_ids = [data.azurerm_private_dns_zone.private_dns_zone$loopvar.id]
+  }
+
+  private_service_connection = {
+    name                           = "privateserviceconnection-sqlmi"
+    is_manual_connection           = false
+    private_connection_resource_id = module.sqlmanagedinstance_$loopvar.mssql_managed_instance.id
+    subresource_names              = ["managedInstance"]
+  }
+
+  depends_on = [
+    module.sqlmanagedinstance_$loopvar,
+    $rgDependency
+  ]
+}
+
+module "sqlmi_role_assignment_$loopvar" {
+  source               = "github.com/ARCH-AMIS/tf_mod_az_authorization//role_assignment?ref=tag"
+  role_definition_name = "Storage Blob Data Contributor"
+  scope                = data.azurerm_storage_account.storage_account$loopvar.id
+  principal_id         = module.sqlmanagedinstance_$loopvar.mssql_managed_instance.identity.0.principal_id
+  
+  depends_on = [
+    module.sqlmanagedinstance_$loopvar
+  ]
+}
+
+# Create Azure SQL Managed Instance Security Alert Policy.
+module "sqlmi_security_alert_policy_$loopvar" {
+  source                = "github.com/ARCH-AMIS/tf_mod_az_sql_managed_instance//mssql_managed_instance_security_alert_policy?ref=tag"
+  resource_group_name   = var.resource_group_name$loopvar 
+  managed_instance_name = module.sqlmanagedinstance_$loopvar.mssql_managed_instance.name
+  email_addresses       = local.email_addresses$loopvar
+  # storage_endpoint      = data.azurerm_storage_account.storage_account$loopvar.primary_blob_endpoint
+  # storage_account_access_key = data.azurerm_storage_account.storage_account$loopvar.primary_access_key
+
+  depends_on = [
+    module.sqlmi_role_assignment_$loopvar,
+    module.sqlmanagedinstance_$loopvar,
+    $rgDependency
+  ]
+}
+
+# Create the storage account container used for vulnerability assessments
+module "primary_assessment_container_$loopvar" {
+  source               = "github.com/ARCH-AMIS/tf_mod_az_storage_account//storage_container?ref=tag"
+  name                 = module.sqlmanagedinstance_$loopvar.mssql_managed_instance.name
+  storage_account_name = data.azurerm_storage_account.storage_account$loopvar.name
+
+  depends_on = [
+    module.sqlmanagedinstance_$loopvar
+  ]
+}
+
+
+# Create Azure SQL Managed Instance Vulnerability Assessment.
+module "sqlmi_vulnerability_assessment_$loopvar" {
+  source                 = "github.com/ARCH-AMIS/tf_mod_az_sql_managed_instance//mssql_managed_instance_vulnerability_assessment?ref=tag"
+  managed_instance_id    = module.sqlmanagedinstance_$loopvar.mssql_managed_instance.id
+  storage_container_path = "${module.primary_assessment_container_$loopvar.storage_container.id}/"
+  # storage_container_path     = data.azurerm_storage_container.storage_container$loopvar.id
+  # storage_account_access_key = data.azurerm_storage_account.storage_account$loopvar.primary_access_key
+
+  recurring_scans = {
+    enabled = true
+    emails  = local.email_addresses$loopvar
+  }
+
+  depends_on = [
+    module.sqlmanagedinstance_$loopvar,
+    module.sqlmi_role_assignment_$loopvar,
+    module.sqlmi_security_alert_policy_$loopvar,
+    module.primary_assessment_container_$loopvar
+  ]
+}
+
+# # Create mssql managed instance active directory administrator for primary instance
+module "primary_azuread_admins_$loopvar" {
+  source              = "github.com/ARCH-AMIS/tf_mod_az_sql_managed_instance//mssql_managed_instance_active_directory_administrator?ref=tag"
+  managed_instance_id = module.sqlmanagedinstance_$loopvar.mssql_managed_instance.id
+  login_username      = data.azuread_group.group$loopvar.display_name
+  object_id           = data.azuread_group.group$loopvar.object_id
+  tenant_id           = module.sqlmanagedinstance_$loopvar.mssql_managed_instance.identity.0.tenant_id
+  principal_object_id = module.sqlmanagedinstance_$loopvar.mssql_managed_instance.identity.0.principal_id
+
+  depends_on = [
+    module.sqlmanagedinstance_$loopvar
+  ]
+}
+
+
+# sqlmanagedinstance_$loopvar end
